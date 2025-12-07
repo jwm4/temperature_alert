@@ -1,0 +1,11 @@
+{
+    "latitude": 40.71,
+    "longitude": -74.00,
+    "freeze_threshold_f": 60.0,
+    "heat_threshold_f": 80.0,
+    "ntfy_topic": "your-topic-here",
+    "sensors": {
+        "Indoor": "Kitchen",
+        "Channel 1": "Living Room"
+    }
+}
