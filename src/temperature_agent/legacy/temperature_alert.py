@@ -11,7 +11,10 @@ import logging
 import os
 
 # Configuration
-LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temperature_alert.log")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# Project root is 3 levels up from legacy/ (legacy -> temperature_agent -> src -> root)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(SCRIPT_DIR)))
+LOG_FILE = os.path.join(PROJECT_ROOT, "temperature_alert.log")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,8 +25,8 @@ logging.basicConfig(
     ]
 )
 
-# Load Configuration
-CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+# Load Configuration - config.json is in project root
+CONFIG_FILE = os.path.join(PROJECT_ROOT, "config.json")
 
 try:
     with open(CONFIG_FILE, 'r') as f:

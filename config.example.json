@@ -3,9 +3,33 @@
     "longitude": -74.00,
     "freeze_threshold_f": 60.0,
     "heat_threshold_f": 80.0,
-    "ntfy_topic": "your-topic-here",
+    "ntfy_topic": "your-alerts-topic",
     "sensors": {
         "Indoor": "Kitchen",
-        "Channel 1": "Living Room"
-    }
+        "Channel 1": "Living Room",
+        "Channel 2": "Bedroom",
+        "Channel 3": "Basement",
+        "Channel 4": "Attic"
+    },
+    
+    "_comment_cloud": "Ecowitt Cloud API settings",
+    "ecowitt_application_key": "YOUR_APPLICATION_KEY_HERE",
+    "ecowitt_api_key": "YOUR_API_KEY_HERE",
+    "ecowitt_mac": "XX:XX:XX:XX:XX:XX",
+
+    "_comment_ai": "AI Agent settings",
+    "_model_options": [
+        "qwen.qwen3-32b-v1:0             - RECOMMENDED: Clean output, good reasoning",
+        "mistral.mixtral-8x7b-instruct-v0:1 - Fast, cheap alternative",
+        "See docs/bedrock_model_compatibility_report.md for full list"
+    ],
+    "bedrock_model": "qwen.qwen3-32b-v1:0",
+    "bedrock_region": "us-east-1",
+
+    "_comment_framework": "Agent framework: 'strands' (recommended) or 'langgraph'",
+    "agent_framework": "strands",
+
+    "_comment_memory": "AgentCore Memory - leave empty for local file storage",
+    "_memory_setup": "See docs/agentcore_memory_setup.md for setup instructions",
+    "agentcore_memory_id": ""
 }
