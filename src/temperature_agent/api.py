@@ -42,9 +42,11 @@ app = FastAPI(
 )
 
 # Enable CORS for web frontend
+# NOTE: Wildcard origins acceptable for development/Phase 5
+# TODO: Configure specific origins for production deployment
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -77,6 +79,10 @@ def create_session() -> str:
 
 def get_session(session_token: str) -> dict:
     """Get session by token, raising 401 if invalid or expired."""
+    # Opportunistically clean up expired sessions (every ~10 accesses)
+    if len(sessions) > 0 and secrets.randbelow(10) == 0:
+        cleanup_expired_sessions()
+    
     if session_token not in sessions:
         raise HTTPException(status_code=401, detail="Invalid session")
     
@@ -220,6 +226,9 @@ async def login(request: LoginRequest):
     
     The session token should be used in subsequent requests as:
     `Authorization: Bearer session:<token>`
+    
+    NOTE: No rate limiting implemented (acceptable for Phase 5/personal use).
+    TODO: Add rate limiting for production deployment.
     """
     api_password = get_api_password()
     
