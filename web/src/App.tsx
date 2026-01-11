@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Login } from './components/Login';
 import { Chat } from './components/Chat';
 import { api } from './api';
+import { signOut, isAuthenticated as checkCognitoAuth } from './cognito';
 
 // Import PatternFly styles
 import '@patternfly/react-core/dist/styles/base.css';
@@ -13,13 +14,14 @@ function App() {
   // Check if we have a valid session on load
   useEffect(() => {
     const checkSession = async () => {
-      if (api.isAuthenticated()) {
+      if (checkCognitoAuth()) {
         try {
-          // Verify the session is still valid
+          // Verify the session is still valid by calling the agent
           await api.getStatus();
           setIsAuthenticated(true);
         } catch {
-          // Session expired or invalid
+          // Session expired or invalid - clear tokens
+          signOut();
           setIsAuthenticated(false);
         }
       }
@@ -32,8 +34,8 @@ function App() {
     setIsAuthenticated(true);
   };
 
-  const handleLogout = async () => {
-    await api.logout();
+  const handleLogout = () => {
+    signOut();
     setIsAuthenticated(false);
   };
 

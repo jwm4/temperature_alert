@@ -9,7 +9,7 @@ import {
   ActionGroup,
   Button,
 } from '@patternfly/react-core';
-import { api } from '../api';
+import { signIn } from '../cognito';
 
 interface LoginProps {
   onLogin: () => void;
@@ -27,12 +27,12 @@ export function Login({ onLogin }: LoginProps) {
     setError(null);
 
     try {
-      await api.login(username, password);
+      await signIn(username, password);
       onLogin();
     } catch (err) {
       console.error('Login error:', err);
       if (err instanceof TypeError && err.message.includes('fetch')) {
-        setError('Cannot connect to server. Is the API running?');
+        setError('Cannot connect to authentication service. Check your internet connection.');
       } else {
         setError(err instanceof Error ? err.message : 'Login failed');
       }
@@ -45,7 +45,7 @@ export function Login({ onLogin }: LoginProps) {
     <LoginPage
       loginTitle="Temperature Assistant"
       loginSubtitle="Monitor your home temperatures with AI"
-      textContent="Enter your password to access the temperature monitoring assistant."
+      textContent="Sign in with your Amazon Cognito account to access the temperature monitoring assistant."
       socialMediaLoginContent={null}
       signUpForAccountMessage={null}
       forgotCredentials={null}
