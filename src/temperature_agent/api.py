@@ -122,22 +122,45 @@ def cleanup_expired_sessions():
 # Authentication
 # =============================================================================
 
-def get_api_password() -> Optional[str]:
-    """Get the API password from config."""
+def get_api_users() -> dict[str, str]:
+    """
+    Get API users from config.
+    
+    Config format: "api_users": {"username1": "password1", "username2": "password2"}
+    
+    Returns:
+        Dict mapping usernames to passwords
+    """
     try:
         config = get_config()
-        return config.get("api_password")
+        api_users = config.get("api_users")
+        if api_users and isinstance(api_users, dict):
+            return api_users
+        return {}
     except Exception:
-        return None
+        return {}
+
+
+def verify_user_password(username: str, password: str) -> bool:
+    """Verify username and password against config."""
+    users = get_api_users()
+    
+    if not users:
+        return False
+    
+    stored_password = users.get(username)
+    if not stored_password:
+        return False
+    
+    return secrets.compare_digest(password, stored_password)
 
 
 async def verify_auth(authorization: Optional[str] = Header(None)) -> str:
     """
     Verify authentication header and return session token.
     
-    Supports two modes:
-    1. Password auth: "Bearer password:<password>" - creates new session
-    2. Session auth: "Bearer session:<token>" - uses existing session
+    Expected format: "Bearer session:<token>"
+    Use /auth/login to obtain a session token.
     """
     if not authorization:
         raise HTTPException(
@@ -146,35 +169,12 @@ async def verify_auth(authorization: Optional[str] = Header(None)) -> str:
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization format")
+    if not authorization.startswith("Bearer session:"):
+        raise HTTPException(status_code=401, detail="Invalid authorization format. Use 'Bearer session:<token>'")
     
-    token = authorization[7:]  # Remove "Bearer "
-    
-    # Check if it's a password auth
-    if token.startswith("password:"):
-        password = token[9:]
-        api_password = get_api_password()
-        
-        if not api_password:
-            raise HTTPException(
-                status_code=500,
-                detail="API password not configured. Add 'api_password' to config.json"
-            )
-        
-        if not secrets.compare_digest(password, api_password):
-            raise HTTPException(status_code=401, detail="Invalid password")
-        
-        # Password correct - create a new session
-        return create_session()
-    
-    # Check if it's a session auth
-    if token.startswith("session:"):
-        session_token = token[8:]
-        get_session(session_token)  # Validates the session
-        return session_token
-    
-    raise HTTPException(status_code=401, detail="Invalid authorization format")
+    session_token = authorization[15:]  # Remove "Bearer session:"
+    get_session(session_token)  # Validates the session
+    return session_token
 
 
 # =============================================================================
@@ -182,6 +182,7 @@ async def verify_auth(authorization: Optional[str] = Header(None)) -> str:
 # =============================================================================
 
 class LoginRequest(BaseModel):
+    username: str
     password: str
 
 
@@ -222,24 +223,26 @@ async def health_check():
 @app.post("/auth/login", response_model=LoginResponse)
 async def login(request: LoginRequest):
     """
-    Authenticate with password and receive a session token.
+    Authenticate with username and password, receive a session token.
     
     The session token should be used in subsequent requests as:
     `Authorization: Bearer session:<token>`
     
+    Config format: "api_users": {"user1": "pass1", "user2": "pass2"}
+    
     NOTE: No rate limiting implemented (acceptable for Phase 5/personal use).
     TODO: Add rate limiting for production deployment.
     """
-    api_password = get_api_password()
+    users = get_api_users()
     
-    if not api_password:
+    if not users:
         raise HTTPException(
             status_code=500,
-            detail="API password not configured. Add 'api_password' to config.json"
+            detail="No users configured. Add 'api_users' to config.json"
         )
     
-    if not secrets.compare_digest(request.password, api_password):
-        raise HTTPException(status_code=401, detail="Invalid password")
+    if not verify_user_password(request.username, request.password):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
     
     session_token = create_session()
     
@@ -355,8 +358,8 @@ async def startup_event():
     # Verify configuration
     try:
         config = get_config()
-        if not config.get("api_password"):
-            logger.warning("⚠️  No api_password configured - API will reject all requests")
+        if not config.get("api_users"):
+            logger.warning("⚠️  No api_users configured - API will reject all logins")
         if not config.get("agentcore_memory_id"):
             logger.warning("⚠️  No agentcore_memory_id configured - agent creation will fail")
     except Exception as e:
