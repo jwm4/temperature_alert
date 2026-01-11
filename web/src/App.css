@@ -1,0 +1,33 @@
+/* App-specific styles */
+
+/* Loading state */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 1.5rem;
+  color: var(--pf-t--global--text--color--regular);
+  background-color: var(--pf-t--global--background--color--primary--default);
+}
+
+/* Ensure full height for chat */
+.pf-chatbot--fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* Welcome prompt styling */
+.pf-chatbot__welcome-prompt {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* Message styling tweaks */
+.pf-chatbot__message-box {
+  padding: 1rem;
+}
