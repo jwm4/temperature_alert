@@ -6,3 +6,12 @@ venv/
 .local_docs/
 house_knowledge.json
 alert_history.json
+
+# AgentCore build artifacts
+.bedrock_agentcore/
+
+# UV lockfile (auto-generated)
+uv.lock
+
+# Node modules
+web/node_modules/
