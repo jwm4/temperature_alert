@@ -42,9 +42,7 @@ Different types of markdown files belong in different locations:
 
 ```
 src/temperature_agent/
-├── agent_with_memory.py   # Main agent implementation (USE THIS)
-├── agent.py               # Original agent (deprecated)
-├── agent_langgraph.py     # LangGraph version (deprecated)
+├── agent_with_memory.py   # Main agent implementation
 ├── cli.py                 # Interactive CLI
 ├── config.py              # Configuration loader
 ├── tools/                 # Agent tools
@@ -55,7 +53,7 @@ src/temperature_agent/
 └── legacy/                # Original scripts (reference only)
 ```
 
-**Key file: `agent_with_memory.py`** - This is the main agent implementation. The other agent files are deprecated and kept for reference only.
+**Key file: `agent_with_memory.py`** - This is the main agent implementation.
 
 ---
 
@@ -92,8 +90,7 @@ Key settings:
 {
   "bedrock_model": "qwen.qwen3-32b-v1:0",  // DO NOT CHANGE without reading model report
   "bedrock_region": "us-east-1",
-  "agent_framework": "strands",             // Keep as "strands"
-  "agentcore_memory_id": "..."              // Leave empty for local file fallback
+  "agentcore_memory_id": "..."              // Required - see docs/agentcore_memory_setup.md
 }
 ```
 
@@ -133,17 +130,13 @@ the coldest room. Use them when needed to answer questions.
 
 ### 3. Memory Architecture
 
-The agent uses two memory modes:
+The agent uses **AgentCore Memory** for house knowledge:
+- Semantic search across sessions
+- Automatic fact extraction from conversations
+- Cloud persistence
+- Requires `agentcore_memory_id` in config.json
 
-1. **AgentCore Memory** (production) - When `agentcore_memory_id` is set
-   - Semantic search across sessions
-   - Automatic fact extraction
-   - Cloud persistence
-
-2. **Local file fallback** (development) - When `agentcore_memory_id` is empty
-   - `house_knowledge.json` - Stored facts
-   - `alert_history.json` - Alert records
-   - No AWS costs
+**Alert history** is stored locally in `alert_history.json` as a simple log.
 
 ### 4. Tool Registration
 
@@ -187,7 +180,6 @@ The docstring becomes the tool description that the LLM sees.
 1. **Read `docs/bedrock_model_compatibility_report.md` first**
 2. Update `bedrock_model` in `config.json`
 3. Test thoroughly - issues often only appear in real usage
-4. Consider if LangGraph filtering is needed (see `agent_langgraph.py`)
 
 ### Testing Memory
 
@@ -220,13 +212,22 @@ PYTHONPATH=src python -m temperature_agent --clear-memory
 
 ---
 
+## Git Workflow
+
+When making PRs:
+- **Use separate commits** for each logical change (don't amend previous commits)
+- This allows squash-and-merge when the PR is ready
+- Write clear commit messages describing what changed and why
+
+---
+
 ## Don't Do These Things
 
 1. **Don't change the model** without reading the compatibility report
 2. **Don't add explicit tool instructions** to system prompts
-3. **Don't use `agent.py` or `agent_langgraph.py`** - they're deprecated
-4. **Don't skip tests** - use TDD for new features
-5. **Don't put user docs in `.local_docs/`** - that folder is gitignored
+3. **Don't skip tests** - use TDD for new features
+4. **Don't put user docs in `.local_docs/`** - that folder is gitignored
+5. **Don't amend commits** in PRs - use separate commits for fixes
 
 ---
 

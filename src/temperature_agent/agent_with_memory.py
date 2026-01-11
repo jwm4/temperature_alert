@@ -7,20 +7,26 @@ cross-session persistence.
 
 PREREQUISITES:
 1. Create an AgentCore Memory resource in AWS Console or via CLI:
-   aws bedrock-agentcore create-memory --memory-name "temperature-agent-memory"
+   aws bedrock-agentcore-control create-memory --name "temperature-agent-memory"
    
 2. Note the memory_id from the response and add it to config.json:
-   "agentcore_memory_id": "arn:aws:bedrock-agentcore:us-east-1:123456789:memory/abc123"
+   "agentcore_memory_id": "temperature_agent-xxxxx"
 
-3. Enable memory strategies (semantic, user_preference) in the AWS Console
+3. Enable memory strategies (semantic) in the AWS Console
 """
 
 import logging
 import uuid
-from typing import Optional
 
 from strands import Agent
 from strands.models import BedrockModel
+from bedrock_agentcore.memory.integrations.strands.session_manager import (
+    AgentCoreMemorySessionManager
+)
+from bedrock_agentcore.memory.integrations.strands.config import (
+    AgentCoreMemoryConfig,
+    RetrievalConfig
+)
 
 from temperature_agent.config import get_config
 from temperature_agent.tools.temperature import (
@@ -36,9 +42,7 @@ from temperature_agent.tools.alerts import (
     set_alert_threshold,
     get_alert_preferences,
 )
-from temperature_agent.tools.memory import (
-    get_alert_history,
-)
+from temperature_agent.tools.memory import get_alert_history
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +50,10 @@ logger = logging.getLogger(__name__)
 DEFAULT_MODEL_ID = "qwen.qwen3-32b-v1:0"
 DEFAULT_REGION = "us-east-1"
 
-# System prompt - simplified since AgentCore handles memory
+# For backwards compatibility with tests
+MODEL_ID = DEFAULT_MODEL_ID
+
+# System prompt
 SYSTEM_PROMPT = """You are a helpful and friendly temperature monitoring assistant for a home.
 Your primary purpose is to help the homeowner monitor temperatures throughout their house,
 watch for freeze or heat risks, and manage temperature alerts.
@@ -111,14 +118,12 @@ def get_agent_tools() -> list:
         send_alert,
         set_alert_threshold,
         get_alert_preferences,
-        # Alert history (memory tools replaced by AgentCore)
+        # Alert history
         get_alert_history,
-        # Note: store_house_knowledge and search_house_knowledge are NOT needed
-        # AgentCore Memory handles this automatically via semantic strategy
     ]
 
 
-def create_agent_with_memory(
+def create_agent(
     model_id: str = None,
     region: str = None,
     session_id: str = None,
@@ -146,7 +151,8 @@ def create_agent_with_memory(
     if not memory_id:
         raise ValueError(
             "agentcore_memory_id not configured in config.json. "
-            "Please create an AgentCore Memory resource and add its ID to config."
+            "Please create an AgentCore Memory resource and add its ID to config. "
+            "See docs/agentcore_memory_setup.md for instructions."
         )
     
     # Get model config
@@ -159,17 +165,7 @@ def create_agent_with_memory(
     if session_id is None:
         session_id = f"session_{uuid.uuid4().hex[:12]}"
     
-    # Import AgentCore Memory integration
-    from bedrock_agentcore.memory.integrations.strands.session_manager import (
-        AgentCoreMemorySessionManager
-    )
-    from bedrock_agentcore.memory.integrations.strands.config import (
-        AgentCoreMemoryConfig,
-        RetrievalConfig
-    )
-    
     # Configure memory retrieval per namespace
-    # The retrieval_config is a dict mapping namespace patterns to RetrievalConfig
     retrieval_config = {
         "/actor/{actorId}/house": RetrievalConfig(
             top_k=10,  # Return top 10 relevant memories
@@ -202,7 +198,7 @@ def create_agent_with_memory(
         model=model,
         system_prompt=SYSTEM_PROMPT,
         tools=get_agent_tools(),
-        session_manager=session_manager,  # This enables AgentCore Memory!
+        session_manager=session_manager,
     )
     
     logger.info(f"Created agent with AgentCore Memory (session: {session_id})")
@@ -210,80 +206,80 @@ def create_agent_with_memory(
     return agent
 
 
-def create_agent_without_memory(
-    model_id: str = None,
-    region: str = None
-) -> Agent:
+def generate_status_greeting() -> str:
     """
-    Create agent without AgentCore Memory (fallback for local development).
+    Generate a status greeting showing current temperatures and forecast.
     
-    Uses the original local file-based memory from memory.py.
+    This is shown when the user first connects to give them an immediate
+    overview of conditions.
+    
+    Returns:
+        str: Formatted status greeting
     """
-    from temperature_agent.tools.memory import store_house_knowledge, search_house_knowledge
+    lines = ["🌡️ Temperature Assistant", ""]
     
-    if model_id is None or region is None:
-        config_model, config_region = get_model_config()
-        model_id = model_id or config_model
-        region = region or config_region
+    # Get current temperatures
+    try:
+        temps = get_current_temperatures()
+    except Exception as e:
+        logger.error(f"Error getting temperatures: {e}")
+        temps = {}
     
-    model = BedrockModel(
-        model_id=model_id,
-        region_name=region
-    )
+    # Get forecast
+    try:
+        forecast = get_forecast()
+    except Exception as e:
+        logger.error(f"Error getting forecast: {e}")
+        forecast = None
     
-    # Include local memory tools
-    tools = get_agent_tools() + [store_house_knowledge, search_house_knowledge]
-    
-    agent = Agent(
-        model=model,
-        system_prompt=SYSTEM_PROMPT,
-        tools=tools,
-    )
-    
-    return agent
-
-
-def create_agent(
-    model_id: str = None,
-    region: str = None,
-    session_id: str = None,
-    actor_id: str = "default_user",
-    use_agentcore_memory: bool = None
-) -> Agent:
-    """
-    Create agent with automatic memory backend selection.
-    
-    If agentcore_memory_id is configured, uses AgentCore Memory.
-    Otherwise, falls back to local file-based memory.
-    
-    Args:
-        model_id: Bedrock model ID
-        region: AWS region
-        session_id: Session ID (for AgentCore Memory)
-        actor_id: User ID (for AgentCore Memory)
-        use_agentcore_memory: Force AgentCore Memory on/off (None = auto-detect)
-    """
-    config = get_config()
-    
-    # Auto-detect whether to use AgentCore Memory
-    if use_agentcore_memory is None:
-        use_agentcore_memory = bool(config.get("agentcore_memory_id"))
-    
-    if use_agentcore_memory:
-        logger.info("Using AgentCore Memory")
-        return create_agent_with_memory(
-            model_id=model_id,
-            region=region,
-            session_id=session_id,
-            actor_id=actor_id
-        )
+    # Format temperature summary
+    if temps:
+        # Find sensors that are concerning (outside normal range)
+        concerning = []
+        normal_temps = []
+        
+        for sensor, temp in temps.items():
+            if temp < 55:
+                concerning.append(f"the {sensor.lower()} is {temp:.0f}°F")
+            elif temp > 80:
+                concerning.append(f"the {sensor.lower()} is {temp:.0f}°F")
+            else:
+                normal_temps.append(temp)
+        
+        if normal_temps:
+            avg_temp = sum(normal_temps) / len(normal_temps)
+            if concerning:
+                lines.append(f"Most of your sensors are in the mid {int(avg_temp // 10) * 10}'s but {' and '.join(concerning)}.")
+            else:
+                lines.append(f"All sensors are reading normally, averaging around {avg_temp:.0f}°F.")
+        elif concerning:
+            lines.append(f"Note: {' and '.join(concerning)}.")
     else:
-        logger.info("Using local file-based memory")
-        return create_agent_without_memory(
-            model_id=model_id,
-            region=region
-        )
-
-
-# Re-export generate_status_greeting from original agent
-from temperature_agent.agent import generate_status_greeting
+        lines.append("Unable to retrieve current temperatures.")
+    
+    # Format forecast
+    if forecast:
+        outdoor = forecast.get("current_outdoor")
+        low = forecast.get("forecast_low")
+        low_time = forecast.get("forecast_low_time", "")
+        
+        if outdoor is not None:
+            lines.append("")
+            lines.append(f"The outside temperature is {outdoor:.0f}°F now")
+            
+            if low is not None and low_time:
+                # Parse time for display
+                try:
+                    from datetime import datetime
+                    dt = datetime.fromisoformat(low_time.replace("Z", "+00:00"))
+                    time_str = dt.strftime("%-I%p").lower()  # e.g., "3am"
+                    lines[-1] += f" and the forecast shows a low of {low:.0f}°F tonight around {time_str}."
+                except:
+                    lines[-1] += f" and the forecast low is {low:.0f}°F."
+            else:
+                lines[-1] += "."
+    
+    lines.append("")
+    lines.append("How can I help you?")
+    
+    return "\n".join(lines)

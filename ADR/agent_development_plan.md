@@ -38,7 +38,7 @@ Based on development work, the following decisions have been finalized:
 | **LLM Model** | Qwen3 32B (`qwen.qwen3-32b-v1:0`) | Clean output, good reasoning, ~$0.35/1M tokens |
 | **Chat UI** | PatternFly Chatbot (`@patternfly/chatbot`) | Enterprise-grade, accessible |
 | **Authentication** | Simple password protection | To be implemented in Phase 5 |
-| **Memory System** | AgentCore Memory + local file fallback | Semantic memory strategy enabled |
+| **Memory System** | AgentCore Memory (required) | Semantic memory strategy enabled |
 | **Alert Customization** | Yes - per-sensor thresholds via chat | Implemented |
 | **Startup Behavior** | Auto-show current temperatures on login | Implemented in CLI |
 | **Budget** | $5-20/month acceptable | |
@@ -52,7 +52,7 @@ Based on development work, the following decisions have been finalized:
    - Model filtering wasn't needed with Qwen3
    - Simpler codebase
 
-3. **Memory Architecture**: Using AgentCore Memory with semantic strategy for house knowledge. Local file fallback (`house_knowledge.json`, `alert_history.json`) available for development/testing.
+3. **Memory Architecture**: Using AgentCore Memory with semantic strategy for house knowledge (required). Alert history stored locally in `alert_history.json`.
 
 ---
 
@@ -86,8 +86,7 @@ Based on development work, the following decisions have been finalized:
 │  │  • send_alert()                                           │   │
 │  │  • set_alert_threshold()                                  │   │
 │  │  • get_alert_preferences()                                │   │
-│  │  • store_house_knowledge() ← semantic memory             │   │
-│  │  • search_house_knowledge() ← retrieval                  │   │
+│  │  • get_alert_history()                                    │   │
 │  └─────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
          │                    │                    │
@@ -157,10 +156,10 @@ Based on development work, the following decisions have been finalized:
 | `send_alert()` | `tools/alerts.py` | Send ntfy.sh notification |
 | `set_alert_threshold()` | `tools/alerts.py` | Set custom threshold for sensor |
 | `get_alert_preferences()` | `tools/alerts.py` | Current alert settings |
-| `store_house_knowledge()` | `tools/memory.py` | Save house/environment info |
-| `search_house_knowledge()` | `tools/memory.py` | Retrieve relevant context |
 | `get_alert_history()` | `tools/memory.py` | Past alert records |
 | `record_alert()` | `tools/memory.py` | Log an alert event |
+
+Note: House knowledge storage/retrieval is handled automatically by AgentCore Memory.
 
 **Test files:**
 - `tests/test_temperature_tools.py` - 8 tests
@@ -190,9 +189,7 @@ PYTHONPATH=src pytest tests/ -v
 - [x] Response quality tuned
 
 **Files created:**
-- `src/temperature_agent/agent_with_memory.py` - Main agent implementation (recommended)
-- `src/temperature_agent/agent.py` - Original implementation (deprecated)
-- `src/temperature_agent/agent_langgraph.py` - LangGraph version (deprecated)
+- `src/temperature_agent/agent_with_memory.py` - Main agent implementation
 - `src/temperature_agent/cli.py` - Interactive CLI
 - `src/temperature_agent/config.py` - Configuration loader
 
@@ -233,7 +230,6 @@ Agent: [Retrieves stored knowledge about stone walls and provides contextual ans
 - [x] Semantic memory strategy enabled ("house_facts")
 - [x] Strands integration via `AgentCoreMemorySessionManager`
 - [x] Cross-session memory verified working
-- [x] Local file fallback for development
 
 **AWS Memory Resource:**
 - Memory ID: `temperature_agent-mcbeCMEOwX`
@@ -243,15 +239,14 @@ Agent: [Retrieves stored knowledge about stone walls and provides contextual ans
 
 **Memory architecture:**
 ```
-AgentCore Memory (Production)
+AgentCore Memory (Required)
 ├── Semantic Strategy: house_facts
 │   └── Namespace: /actor/{actorId}/house
 │   └── Auto-extracts facts from conversations
 │   └── Enables semantic search across sessions
-│
-Local File Fallback (Development)
-├── house_knowledge.json - Stored facts
-└── alert_history.json - Alert records
+
+Local Storage
+└── alert_history.json - Simple log of alerts sent
 ```
 
 **Configuration in `config.json`:**
@@ -261,7 +256,7 @@ Local File Fallback (Development)
 }
 ```
 
-If `agentcore_memory_id` is empty or missing, the agent falls back to local file storage automatically.
+AgentCore Memory is required. The agent will not start without a valid `agentcore_memory_id`.
 
 **Setup documentation:** See [docs/agentcore_memory_setup.md](../docs/agentcore_memory_setup.md)
 
@@ -422,20 +417,18 @@ temperature_alert/
 │   └── temperature_agent/
 │       ├── __init__.py
 │       ├── __main__.py            # Entry point for CLI
-│       ├── agent_with_memory.py   # Main agent (recommended)
-│       ├── agent.py               # Original agent (deprecated)
-│       ├── agent_langgraph.py     # LangGraph version (deprecated)
+│       ├── agent_with_memory.py   # Main agent implementation
 │       ├── cli.py                 # Interactive CLI
 │       ├── config.py              # Configuration loader
 │       ├── hello_agent.py         # Test agent
-│       ├── legacy/                # Original scripts
+│       ├── legacy/                # Original scripts (non-agent mode)
 │       │   ├── temperature_alert_cloud.py
 │       │   └── temperature_alert.py
 │       └── tools/                 # Agent tools
 │           ├── __init__.py
 │           ├── alerts.py
 │           ├── forecast.py
-│           ├── memory.py
+│           ├── memory.py          # Alert history only
 │           └── temperature.py
 ├── tests/                         # Test suite
 │   ├── test_temperature_tools.py
@@ -446,10 +439,8 @@ temperature_alert/
 │   └── test_agent_responses.py
 ├── config.json                    # Configuration (not in repo)
 ├── config.example.json            # Configuration template
-├── house_knowledge.json           # Local memory fallback
 ├── alert_history.json             # Local alert history
 ├── pyproject.toml                 # Python package config
-├── requirements.txt               # Dependencies
 └── README.md
 ```
 
@@ -468,9 +459,8 @@ The agent is configured via `config.json`. Key settings:
   // AI settings
   "bedrock_model": "qwen.qwen3-32b-v1:0",
   "bedrock_region": "us-east-1",
-  "agent_framework": "strands",
   
-  // Memory (leave empty for local file fallback)
+  // Memory (required)
   "agentcore_memory_id": "temperature_agent-mcbeCMEOwX"
 }
 ```
@@ -576,7 +566,7 @@ For the person continuing this work:
 3. **Key files to understand:**
    - `src/temperature_agent/agent_with_memory.py` - Main agent logic
    - `src/temperature_agent/cli.py` - How the agent is invoked
-   - `config.json` - All configuration
+   - `config.json` - All configuration (must include `agentcore_memory_id`)
 
 4. **Web interface notes:**
    - The `generate_status_greeting()` function returns the formatted greeting
@@ -591,4 +581,4 @@ For the person continuing this work:
 ---
 
 *Plan created: January 9, 2026*  
-*Last updated: January 10, 2026*
+*Last updated: January 11, 2026*

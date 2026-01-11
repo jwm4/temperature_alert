@@ -5,7 +5,7 @@ This package contains the tools available to the temperature agent:
 - temperature: Query temperature sensors
 - forecast: Get weather forecasts
 - alerts: Send alerts and manage thresholds
-- memory: Store and recall house knowledge
+- memory: Alert history (house knowledge handled by AgentCore Memory)
 """
 
 from temperature_agent.tools.temperature import (
@@ -27,8 +27,6 @@ from temperature_agent.tools.alerts import (
 )
 
 from temperature_agent.tools.memory import (
-    store_house_knowledge,
-    search_house_knowledge,
     get_alert_history,
     record_alert,
 )
@@ -47,8 +45,6 @@ __all__ = [
     "set_alert_threshold",
     "get_alert_preferences",
     # Memory tools
-    "store_house_knowledge",
-    "search_house_knowledge",
     "get_alert_history",
     "record_alert",
 ]

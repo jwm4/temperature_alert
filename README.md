@@ -45,9 +45,7 @@ temperature_alert/
 ├── config.json                 # Your configuration
 ├── src/
 │   └── temperature_agent/
-│       ├── agent.py            # Main Strands agent
-│       ├── agent_with_memory.py # Agent with AgentCore Memory
-│       ├── agent_langgraph.py  # Alternative LangGraph implementation
+│       ├── agent_with_memory.py # Main Strands agent with memory support
 │       ├── cli.py              # Interactive CLI
 │       ├── tools/              # Agent tools (temperature, alerts, memory)
 │       └── legacy/             # Original monitoring scripts
