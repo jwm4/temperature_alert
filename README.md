@@ -117,12 +117,44 @@ See `config.example.json` for full template.
 
 ## Usage
 
-### AI Chat Agent
+### AI Chat Agent (CLI)
 
 ```bash
 source venv/bin/activate
 PYTHONPATH=src python -m temperature_agent
 ```
+
+### REST API
+
+Start the API server for web/mobile access:
+
+```bash
+source venv/bin/activate
+PYTHONPATH=src uvicorn temperature_agent.api:app --host 0.0.0.0 --port 8000
+```
+
+**API Endpoints:**
+- `GET /health` - Health check (no auth)
+- `POST /auth/login` - Login with password, returns session token
+- `GET /status` - Get current temperature status (requires auth)
+- `POST /chat` - Send message to agent (requires auth)
+
+**Example:**
+```bash
+# Login
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"password": "your_api_password"}'
+# Returns: {"session_token": "...", "expires_in": 86400}
+
+# Chat (use the session token)
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer session:<token>" \
+  -d '{"message": "Which room is coldest?"}'
+```
+
+Add `api_password` to your `config.json` to enable the API.
 
 **Example interactions:**
 - "Which room is coldest?"

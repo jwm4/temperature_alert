@@ -21,7 +21,7 @@ Build an AI-powered conversational agent for the temperature alert system using 
 | Phase 2: Agent Tools Development | ✅ **DONE** | All tools implemented with TDD |
 | Phase 3: Agent Core Logic | ✅ **DONE** | CLI working, local testing complete |
 | Phase 4: Memory Implementation | ✅ **DONE** | AgentCore Memory integrated |
-| Phase 5: Web Interface | ⬜ **NOT STARTED** | PatternFly Chatbot selected |
+| Phase 5: Web Interface | 🟡 **IN PROGRESS** | FastAPI backend complete, frontend next |
 | Phase 6: AWS Deployment | ⬜ **NOT STARTED** | |
 | Phase 7: Testing & Polish | ⬜ **NOT STARTED** | |
 | Phase 8: Monitoring & Documentation | ⬜ **NOT STARTED** | |
@@ -264,11 +264,39 @@ AgentCore Memory is required. The agent will not start without a valid `agentcor
 
 ## Remaining Phases
 
-### Phase 5: Web Interface ⬜ NOT STARTED
+### Phase 5: Web Interface 🟡 IN PROGRESS
 
 **Goal:** Create a responsive web chat interface with password protection using PatternFly Chatbot.
 
-#### Selected Framework: PatternFly Chatbot
+#### Part A: FastAPI Backend ✅ DONE
+
+A REST API backend has been implemented to serve the agent over HTTP.
+
+**Completed:**
+- [x] FastAPI application with password authentication
+- [x] Session management (in-memory, 24-hour expiry)
+- [x] `/health` endpoint (no auth) - health check
+- [x] `/auth/login` endpoint - password authentication, returns session token
+- [x] `/status` endpoint - current temperatures and greeting
+- [x] `/chat` endpoint - send message to agent
+- [x] `/chat/stream` endpoint - streaming responses (SSE)
+- [x] CORS support for web frontend
+
+**File:** `src/temperature_agent/api.py`
+
+**Run locally:**
+```bash
+PYTHONPATH=src uvicorn temperature_agent.api:app --host 0.0.0.0 --port 8000
+# API docs at http://localhost:8000/docs
+```
+
+**Configuration:** Add `api_password` to `config.json`
+
+---
+
+#### Part B: React Frontend ⬜ NOT STARTED
+
+**Selected Framework: PatternFly Chatbot**
 
 Already decided - see comparison in original plan. Selected for:
 - Professional, polished look out of the box
@@ -286,9 +314,9 @@ Already decided - see comparison in original plan. Selected for:
 - [ ] Configure PatternFly CSS and theming
 - [ ] Implement password authentication screen
 - [ ] Create chat container component
-- [ ] Connect to AgentCore API endpoint (or local API for now)
-- [ ] Implement message streaming
-- [ ] Implement auto-status on login (use `generate_status_greeting()` from agent)
+- [ ] Connect to FastAPI backend (localhost:8000)
+- [ ] Implement message streaming (via SSE endpoint)
+- [ ] Implement auto-status on login (call `/status` endpoint)
 - [ ] Configure welcome prompt with quick actions:
   - "Check all temperatures"
   - "Which room is coldest?"
@@ -418,6 +446,7 @@ temperature_alert/
 │       ├── __init__.py
 │       ├── __main__.py            # Entry point for CLI
 │       ├── agent_with_memory.py   # Main agent implementation
+│       ├── api.py                 # FastAPI REST server
 │       ├── cli.py                 # Interactive CLI
 │       ├── config.py              # Configuration loader
 │       ├── hello_agent.py         # Test agent
@@ -461,7 +490,10 @@ The agent is configured via `config.json`. Key settings:
   "bedrock_region": "us-east-1",
   
   // Memory (required)
-  "agentcore_memory_id": "temperature_agent-mcbeCMEOwX"
+  "agentcore_memory_id": "temperature_agent-mcbeCMEOwX",
+  
+  // Web API
+  "api_password": "your_secure_password"
 }
 ```
 
@@ -581,4 +613,5 @@ For the person continuing this work:
 ---
 
 *Plan created: January 9, 2026*  
-*Last updated: January 11, 2026*
+*Last updated: January 11, 2026*  
+*FastAPI backend added: January 11, 2026*
