@@ -10,6 +10,26 @@ import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 
 
+# Helper function to create a mocked agent
+def create_mocked_agent():
+    """Create a mocked agent for testing."""
+    from temperature_agent.agent_with_memory import create_agent
+    
+    with patch('temperature_agent.agent_with_memory.Agent') as MockAgent:
+        with patch('temperature_agent.agent_with_memory.get_config') as mock_config:
+            with patch('temperature_agent.agent_with_memory.AgentCoreMemorySessionManager'):
+                mock_config.return_value = {
+                    "agentcore_memory_id": "test-memory-id",
+                    "bedrock_model": "qwen.qwen3-32b-v1:0",
+                    "bedrock_region": "us-east-1"
+                }
+                mock_agent = MagicMock()
+                MockAgent.return_value = mock_agent
+                
+                agent = create_agent()
+                return agent
+
+
 # === Tests for Status Query Handling ===
 
 class TestStatusQueries:
@@ -17,40 +37,19 @@ class TestStatusQueries:
     
     def test_handles_current_temperature_query(self):
         """Agent should use get_current_temperatures for status queries."""
-        from temperature_agent.agent import create_agent
-        
-        with patch('temperature_agent.agent.Agent') as MockAgent:
-            mock_agent = MagicMock()
-            MockAgent.return_value = mock_agent
-            
-            # Simulate a conversation turn
-            mock_agent.return_value = MagicMock(content="The temperatures are...")
-            
-            agent = create_agent()
-            # The agent should be callable
-            assert agent is not None
+        agent = create_mocked_agent()
+        # The agent should be callable
+        assert agent is not None
     
     def test_handles_coldest_sensor_query(self):
         """Agent should handle 'which sensor is coldest' queries."""
-        from temperature_agent.agent import create_agent
-        
-        with patch('temperature_agent.agent.Agent') as MockAgent:
-            mock_agent = MagicMock()
-            MockAgent.return_value = mock_agent
-            
-            agent = create_agent()
-            assert agent is not None
+        agent = create_mocked_agent()
+        assert agent is not None
     
     def test_handles_warmest_sensor_query(self):
         """Agent should handle 'which sensor is warmest' queries."""
-        from temperature_agent.agent import create_agent
-        
-        with patch('temperature_agent.agent.Agent') as MockAgent:
-            mock_agent = MagicMock()
-            MockAgent.return_value = mock_agent
-            
-            agent = create_agent()
-            assert agent is not None
+        agent = create_mocked_agent()
+        assert agent is not None
 
 
 class TestForecastQueries:
@@ -58,14 +57,8 @@ class TestForecastQueries:
     
     def test_handles_forecast_query(self):
         """Agent should handle weather forecast queries."""
-        from temperature_agent.agent import create_agent
-        
-        with patch('temperature_agent.agent.Agent') as MockAgent:
-            mock_agent = MagicMock()
-            MockAgent.return_value = mock_agent
-            
-            agent = create_agent()
-            assert agent is not None
+        agent = create_mocked_agent()
+        assert agent is not None
 
 
 class TestAlertCommands:
@@ -73,73 +66,37 @@ class TestAlertCommands:
     
     def test_handles_send_alert_command(self):
         """Agent should handle 'send me an alert' commands."""
-        from temperature_agent.agent import create_agent
-        
-        with patch('temperature_agent.agent.Agent') as MockAgent:
-            mock_agent = MagicMock()
-            MockAgent.return_value = mock_agent
-            
-            agent = create_agent()
-            assert agent is not None
+        agent = create_mocked_agent()
+        assert agent is not None
     
     def test_handles_set_threshold_command(self):
         """Agent should handle 'set threshold' commands."""
-        from temperature_agent.agent import create_agent
-        
-        with patch('temperature_agent.agent.Agent') as MockAgent:
-            mock_agent = MagicMock()
-            MockAgent.return_value = mock_agent
-            
-            agent = create_agent()
-            assert agent is not None
+        agent = create_mocked_agent()
+        assert agent is not None
     
     def test_handles_alert_preferences_query(self):
         """Agent should handle queries about current alert settings."""
-        from temperature_agent.agent import create_agent
-        
-        with patch('temperature_agent.agent.Agent') as MockAgent:
-            mock_agent = MagicMock()
-            MockAgent.return_value = mock_agent
-            
-            agent = create_agent()
-            assert agent is not None
+        agent = create_mocked_agent()
+        assert agent is not None
 
 
 class TestMemoryCommands:
     """Tests for memory-related commands."""
     
     def test_handles_store_knowledge_command(self):
-        """Agent should handle commands to remember house information."""
-        from temperature_agent.agent import create_agent
-        
-        with patch('temperature_agent.agent.Agent') as MockAgent:
-            mock_agent = MagicMock()
-            MockAgent.return_value = mock_agent
-            
-            agent = create_agent()
-            assert agent is not None
+        """Agent should handle commands to remember house information (via AgentCore Memory)."""
+        agent = create_mocked_agent()
+        assert agent is not None
     
     def test_handles_knowledge_query(self):
         """Agent should handle queries that might use stored knowledge."""
-        from temperature_agent.agent import create_agent
-        
-        with patch('temperature_agent.agent.Agent') as MockAgent:
-            mock_agent = MagicMock()
-            MockAgent.return_value = mock_agent
-            
-            agent = create_agent()
-            assert agent is not None
+        agent = create_mocked_agent()
+        assert agent is not None
     
     def test_handles_alert_history_query(self):
         """Agent should handle queries about past alerts."""
-        from temperature_agent.agent import create_agent
-        
-        with patch('temperature_agent.agent.Agent') as MockAgent:
-            mock_agent = MagicMock()
-            MockAgent.return_value = mock_agent
-            
-            agent = create_agent()
-            assert agent is not None
+        agent = create_mocked_agent()
+        assert agent is not None
 
 
 # === Tests for Greeting/Startup ===
@@ -149,11 +106,11 @@ class TestGreetingBehavior:
     
     def test_generate_status_greeting_returns_string(self):
         """generate_status_greeting should return a formatted status message."""
-        from temperature_agent.agent import generate_status_greeting
+        from temperature_agent.agent_with_memory import generate_status_greeting
         
         # Mock the tools to avoid actual API calls
-        with patch('temperature_agent.agent.get_current_temperatures') as mock_temps:
-            with patch('temperature_agent.agent.get_forecast') as mock_forecast:
+        with patch('temperature_agent.agent_with_memory.get_current_temperatures') as mock_temps:
+            with patch('temperature_agent.agent_with_memory.get_forecast') as mock_forecast:
                 mock_temps.return_value = {
                     "Basement": 58.0,
                     "Kitchen": 65.0,
@@ -173,10 +130,10 @@ class TestGreetingBehavior:
     
     def test_status_greeting_includes_temperatures(self):
         """Status greeting should mention current temperatures."""
-        from temperature_agent.agent import generate_status_greeting
+        from temperature_agent.agent_with_memory import generate_status_greeting
         
-        with patch('temperature_agent.agent.get_current_temperatures') as mock_temps:
-            with patch('temperature_agent.agent.get_forecast') as mock_forecast:
+        with patch('temperature_agent.agent_with_memory.get_current_temperatures') as mock_temps:
+            with patch('temperature_agent.agent_with_memory.get_forecast') as mock_forecast:
                 mock_temps.return_value = {
                     "Basement": 58.0,
                     "Kitchen": 65.0,
@@ -196,10 +153,10 @@ class TestGreetingBehavior:
     
     def test_status_greeting_includes_forecast(self):
         """Status greeting should include forecast information."""
-        from temperature_agent.agent import generate_status_greeting
+        from temperature_agent.agent_with_memory import generate_status_greeting
         
-        with patch('temperature_agent.agent.get_current_temperatures') as mock_temps:
-            with patch('temperature_agent.agent.get_forecast') as mock_forecast:
+        with patch('temperature_agent.agent_with_memory.get_current_temperatures') as mock_temps:
+            with patch('temperature_agent.agent_with_memory.get_forecast') as mock_forecast:
                 mock_temps.return_value = {
                     "Basement": 58.0,
                     "Kitchen": 65.0
@@ -220,10 +177,10 @@ class TestGreetingBehavior:
     
     def test_status_greeting_handles_api_errors(self):
         """Status greeting should handle API errors gracefully."""
-        from temperature_agent.agent import generate_status_greeting
+        from temperature_agent.agent_with_memory import generate_status_greeting
         
-        with patch('temperature_agent.agent.get_current_temperatures') as mock_temps:
-            with patch('temperature_agent.agent.get_forecast') as mock_forecast:
+        with patch('temperature_agent.agent_with_memory.get_current_temperatures') as mock_temps:
+            with patch('temperature_agent.agent_with_memory.get_forecast') as mock_forecast:
                 mock_temps.return_value = {}  # Empty/error response
                 mock_forecast.return_value = None  # Error response
                 
@@ -240,12 +197,6 @@ class TestConversationContext:
     
     def test_agent_can_handle_follow_up_questions(self):
         """Agent should be able to handle follow-up questions."""
-        from temperature_agent.agent import create_agent
-        
-        with patch('temperature_agent.agent.Agent') as MockAgent:
-            mock_agent = MagicMock()
-            MockAgent.return_value = mock_agent
-            
-            agent = create_agent()
-            # Agent should support conversation
-            assert agent is not None
+        agent = create_mocked_agent()
+        # Agent should support conversation
+        assert agent is not None

@@ -26,10 +26,7 @@
     "bedrock_model": "qwen.qwen3-32b-v1:0",
     "bedrock_region": "us-east-1",
 
-    "_comment_framework": "Agent framework: 'strands' (recommended) or 'langgraph'",
-    "agent_framework": "strands",
-
-    "_comment_memory": "AgentCore Memory - leave empty for local file storage",
+    "_comment_memory": "AgentCore Memory (required) - see docs/agentcore_memory_setup.md",
     "_memory_setup": "See docs/agentcore_memory_setup.md for setup instructions",
     "agentcore_memory_id": ""
 }

@@ -18,14 +18,14 @@ class TestAgentConfiguration:
     
     def test_agent_has_system_prompt(self):
         """Agent should have a system prompt that defines its persona."""
-        from temperature_agent.agent import SYSTEM_PROMPT
+        from temperature_agent.agent_with_memory import SYSTEM_PROMPT
         
         assert SYSTEM_PROMPT is not None
         assert len(SYSTEM_PROMPT) > 100  # Should be substantial
     
     def test_system_prompt_mentions_temperature_monitoring(self):
         """System prompt should mention the agent's primary purpose."""
-        from temperature_agent.agent import SYSTEM_PROMPT
+        from temperature_agent.agent_with_memory import SYSTEM_PROMPT
         
         prompt_lower = SYSTEM_PROMPT.lower()
         assert "temperature" in prompt_lower
@@ -34,14 +34,14 @@ class TestAgentConfiguration:
     
     def test_system_prompt_mentions_house_knowledge(self):
         """System prompt should mention ability to remember house information."""
-        from temperature_agent.agent import SYSTEM_PROMPT
+        from temperature_agent.agent_with_memory import SYSTEM_PROMPT
         
         prompt_lower = SYSTEM_PROMPT.lower()
         assert any(word in prompt_lower for word in ["house", "home", "knowledge", "remember"])
     
     def test_system_prompt_has_friendly_tone(self):
         """System prompt should encourage a helpful, friendly tone."""
-        from temperature_agent.agent import SYSTEM_PROMPT
+        from temperature_agent.agent_with_memory import SYSTEM_PROMPT
         
         prompt_lower = SYSTEM_PROMPT.lower()
         assert any(word in prompt_lower for word in ["helpful", "friendly", "assist", "help"])
@@ -52,7 +52,7 @@ class TestToolRegistration:
     
     def test_get_agent_tools_returns_list(self):
         """get_agent_tools should return a list of tool functions."""
-        from temperature_agent.agent import get_agent_tools
+        from temperature_agent.agent_with_memory import get_agent_tools
         
         tools = get_agent_tools()
         
@@ -61,7 +61,7 @@ class TestToolRegistration:
     
     def test_temperature_tools_registered(self):
         """Temperature-related tools should be registered."""
-        from temperature_agent.agent import get_agent_tools
+        from temperature_agent.agent_with_memory import get_agent_tools
         
         tools = get_agent_tools()
         tool_names = [getattr(t, '__name__', str(t)) for t in tools]
@@ -73,7 +73,7 @@ class TestToolRegistration:
     
     def test_forecast_tools_registered(self):
         """Forecast tools should be registered."""
-        from temperature_agent.agent import get_agent_tools
+        from temperature_agent.agent_with_memory import get_agent_tools
         
         tools = get_agent_tools()
         tool_names = [getattr(t, '__name__', str(t)) for t in tools]
@@ -82,7 +82,7 @@ class TestToolRegistration:
     
     def test_alert_tools_registered(self):
         """Alert tools should be registered."""
-        from temperature_agent.agent import get_agent_tools
+        from temperature_agent.agent_with_memory import get_agent_tools
         
         tools = get_agent_tools()
         tool_names = [getattr(t, '__name__', str(t)) for t in tools]
@@ -90,15 +90,13 @@ class TestToolRegistration:
         assert "send_alert" in tool_names
         assert "get_alert_preferences" in tool_names
     
-    def test_memory_tools_registered(self):
-        """Memory tools should be registered."""
-        from temperature_agent.agent import get_agent_tools
+    def test_alert_history_tool_registered(self):
+        """Alert history tool should be registered."""
+        from temperature_agent.agent_with_memory import get_agent_tools
         
         tools = get_agent_tools()
         tool_names = [getattr(t, '__name__', str(t)) for t in tools]
         
-        assert "store_house_knowledge" in tool_names
-        assert "search_house_knowledge" in tool_names
         assert "get_alert_history" in tool_names
 
 
@@ -106,57 +104,98 @@ class TestAgentCreation:
     """Tests for agent creation with Strands SDK."""
     
     def test_create_agent_returns_agent_instance(self):
-        """create_agent should return an Agent instance."""
-        from temperature_agent.agent import create_agent
+        """create_agent should return an Agent instance when properly configured."""
+        from temperature_agent.agent_with_memory import create_agent
         
-        # Mock the Strands Agent to avoid actual API calls
-        with patch('temperature_agent.agent.Agent') as MockAgent:
-            MockAgent.return_value = MagicMock()
-            
-            agent = create_agent()
-            
-            assert agent is not None
-            MockAgent.assert_called_once()
+        # Mock the dependencies to avoid actual API calls
+        with patch('temperature_agent.agent_with_memory.Agent') as MockAgent:
+            with patch('temperature_agent.agent_with_memory.get_config') as mock_config:
+                with patch('temperature_agent.agent_with_memory.AgentCoreMemorySessionManager'):
+                    mock_config.return_value = {
+                        "agentcore_memory_id": "test-memory-id",
+                        "bedrock_model": "qwen.qwen3-32b-v1:0",
+                        "bedrock_region": "us-east-1"
+                    }
+                    MockAgent.return_value = MagicMock()
+                    
+                    agent = create_agent()
+                    
+                    assert agent is not None
+                    MockAgent.assert_called_once()
     
     def test_create_agent_uses_correct_model(self):
         """Agent should be created with the configured model."""
-        from temperature_agent.agent import create_agent, MODEL_ID
+        from temperature_agent.agent_with_memory import create_agent, MODEL_ID
         
-        with patch('temperature_agent.agent.Agent') as MockAgent:
-            MockAgent.return_value = MagicMock()
-            
-            create_agent()
-            
-            call_kwargs = MockAgent.call_args
-            # Model should be specified either in args or kwargs
-            assert MODEL_ID is not None
+        with patch('temperature_agent.agent_with_memory.Agent') as MockAgent:
+            with patch('temperature_agent.agent_with_memory.get_config') as mock_config:
+                with patch('temperature_agent.agent_with_memory.AgentCoreMemorySessionManager'):
+                    mock_config.return_value = {
+                        "agentcore_memory_id": "test-memory-id",
+                        "bedrock_model": "qwen.qwen3-32b-v1:0",
+                        "bedrock_region": "us-east-1"
+                    }
+                    MockAgent.return_value = MagicMock()
+                    
+                    create_agent()
+                    
+                    # Model should be specified
+                    assert MODEL_ID is not None
     
     def test_create_agent_includes_system_prompt(self):
         """Agent should be created with the system prompt."""
-        from temperature_agent.agent import create_agent, SYSTEM_PROMPT
+        from temperature_agent.agent_with_memory import create_agent, SYSTEM_PROMPT
         
-        with patch('temperature_agent.agent.Agent') as MockAgent:
-            MockAgent.return_value = MagicMock()
-            
-            create_agent()
-            
-            call_kwargs = MockAgent.call_args
-            # System prompt should be passed to agent
-            assert SYSTEM_PROMPT is not None
+        with patch('temperature_agent.agent_with_memory.Agent') as MockAgent:
+            with patch('temperature_agent.agent_with_memory.get_config') as mock_config:
+                with patch('temperature_agent.agent_with_memory.AgentCoreMemorySessionManager'):
+                    mock_config.return_value = {
+                        "agentcore_memory_id": "test-memory-id",
+                        "bedrock_model": "qwen.qwen3-32b-v1:0",
+                        "bedrock_region": "us-east-1"
+                    }
+                    MockAgent.return_value = MagicMock()
+                    
+                    create_agent()
+                    
+                    # System prompt should be passed to agent
+                    assert SYSTEM_PROMPT is not None
     
     def test_create_agent_registers_tools(self):
         """Agent should be created with tools registered."""
-        from temperature_agent.agent import create_agent, get_agent_tools
+        from temperature_agent.agent_with_memory import create_agent, get_agent_tools
         
-        with patch('temperature_agent.agent.Agent') as MockAgent:
-            MockAgent.return_value = MagicMock()
+        with patch('temperature_agent.agent_with_memory.Agent') as MockAgent:
+            with patch('temperature_agent.agent_with_memory.get_config') as mock_config:
+                with patch('temperature_agent.agent_with_memory.AgentCoreMemorySessionManager'):
+                    mock_config.return_value = {
+                        "agentcore_memory_id": "test-memory-id",
+                        "bedrock_model": "qwen.qwen3-32b-v1:0",
+                        "bedrock_region": "us-east-1"
+                    }
+                    MockAgent.return_value = MagicMock()
+                    
+                    create_agent()
+                    
+                    # Tools should be passed to agent
+                    expected_tools = get_agent_tools()
+                    assert len(expected_tools) > 0
+    
+    def test_create_agent_requires_memory_config(self):
+        """create_agent should raise ValueError if agentcore_memory_id not configured."""
+        from temperature_agent.agent_with_memory import create_agent
+        
+        with patch('temperature_agent.agent_with_memory.get_config') as mock_config:
+            mock_config.return_value = {
+                "bedrock_model": "qwen.qwen3-32b-v1:0",
+                "bedrock_region": "us-east-1"
+                # Note: agentcore_memory_id is missing
+            }
             
-            create_agent()
+            with pytest.raises(ValueError) as exc_info:
+                create_agent()
             
-            call_kwargs = MockAgent.call_args
-            # Tools should be passed to agent
-            expected_tools = get_agent_tools()
-            assert len(expected_tools) > 0
+            assert "agentcore_memory_id" in str(exc_info.value)
 
 
 class TestModelConfiguration:
@@ -164,7 +203,7 @@ class TestModelConfiguration:
     
     def test_model_id_is_defined(self):
         """A model ID should be defined for the agent."""
-        from temperature_agent.agent import MODEL_ID
+        from temperature_agent.agent_with_memory import MODEL_ID
         
         assert MODEL_ID is not None
         assert isinstance(MODEL_ID, str)
@@ -172,8 +211,8 @@ class TestModelConfiguration:
     
     def test_model_id_is_valid_bedrock_model(self):
         """Model ID should be a valid Bedrock model identifier."""
-        from temperature_agent.agent import MODEL_ID
+        from temperature_agent.agent_with_memory import MODEL_ID
         
         # Should contain expected patterns for Bedrock models
-        # e.g., "us.amazon.nova-pro-v1:0" or "anthropic.claude-3-5-sonnet"
+        # e.g., "qwen.qwen3-32b-v1:0" or "anthropic.claude-3-5-sonnet"
         assert "." in MODEL_ID or ":" in MODEL_ID

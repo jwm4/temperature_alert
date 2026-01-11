@@ -4,10 +4,10 @@ Temperature Agent CLI - Interactive command-line interface.
 
 Usage:
     python -m temperature_agent              # Start interactive chat
-    python -m temperature_agent --clear-memory  # Clear local memory and exit
+    python -m temperature_agent --clear-memory  # Clear memory and exit
 
 This provides a simple chat interface to interact with the temperature agent.
-Supports both Strands and LangGraph frameworks (configured in config.json).
+Requires AgentCore Memory to be configured in config.json.
 """
 
 import argparse
@@ -17,26 +17,22 @@ import readline  # Enables command history with up/down arrows
 from temperature_agent.config import get_config
 
 
-def get_framework_config() -> tuple[str, str, str]:
-    """Get framework, model, and region from config."""
+def get_model_config() -> tuple[str, str]:
+    """Get model and region from config."""
     try:
         config = get_config()
-        framework = config.get("agent_framework", "strands")
         model_id = config.get("bedrock_model", "qwen.qwen3-32b-v1:0")
         region = config.get("bedrock_region", "us-east-1")
-        return framework, model_id, region
+        return model_id, region
     except Exception:
-        return "strands", "qwen.qwen3-32b-v1:0", "us-east-1"
+        return "qwen.qwen3-32b-v1:0", "us-east-1"
 
 
-def print_greeting(framework: str):
+def print_greeting():
     """Print the startup greeting with current status."""
     print("\n" + "=" * 60)
     try:
-        if framework == "langgraph":
-            from temperature_agent.agent_langgraph import generate_status_greeting
-        else:
-            from temperature_agent.agent import generate_status_greeting
+        from temperature_agent.agent_with_memory import generate_status_greeting
         greeting = generate_status_greeting()
         print(greeting)
     except Exception as e:
@@ -68,33 +64,23 @@ Example queries:
 """)
 
 
-def run_strands_cli(model_id: str, region: str, use_memory: bool = False):
-    """Run CLI with Strands framework."""
-    # Try to use the memory-enabled agent if configured
-    if use_memory:
-        try:
-            from temperature_agent.agent_with_memory import create_agent
-            agent = create_agent(model_id=model_id, region=region)
-            print("📚 AgentCore Memory enabled")
-        except ValueError as e:
-            # Memory not configured, fall back to basic agent
-            print(f"⚠️  {e}")
-            print("   Falling back to local file-based memory.\n")
-            from temperature_agent.agent import create_agent
-            agent = create_agent(model_id=model_id, region=region)
-        except Exception as e:
-            print(f"❌ Error creating memory-enabled agent: {e}")
-            sys.exit(1)
-    else:
-        from temperature_agent.agent import create_agent
-        try:
-            agent = create_agent(model_id=model_id, region=region)
-        except Exception as e:
-            print(f"❌ Error creating Strands agent: {e}")
-            sys.exit(1)
+def run_cli(model_id: str, region: str):
+    """Run the CLI."""
+    from temperature_agent.agent_with_memory import create_agent
+    
+    try:
+        agent = create_agent(model_id=model_id, region=region)
+    except ValueError as e:
+        print(f"❌ Configuration error: {e}")
+        print("\nPlease configure AgentCore Memory in config.json.")
+        print("See docs/agentcore_memory_setup.md for instructions.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Error creating agent: {e}")
+        sys.exit(1)
     
     print("✅ Agent ready!")
-    print_greeting("strands")
+    print_greeting()
     print("Type /help for commands, or just ask a question.")
     print("Type /quit to exit.\n")
     
@@ -117,7 +103,7 @@ def run_strands_cli(model_id: str, region: str, use_memory: bool = False):
             continue
         
         if user_input.lower() in ["/status", "status"]:
-            print_greeting("strands")
+            print_greeting()
             continue
         
         print("\nAssistant: ", end="", flush=True)
@@ -125,54 +111,6 @@ def run_strands_cli(model_id: str, region: str, use_memory: bool = False):
         try:
             response = agent(user_input)
             # Response was already streamed to stdout
-        except Exception as e:
-            print(f"\n❌ Error: {e}")
-        
-        print()
-
-
-def run_langgraph_cli(model_id: str, region: str):
-    """Run CLI with LangGraph framework."""
-    from temperature_agent.agent_langgraph import LangGraphChat
-    
-    try:
-        chat = LangGraphChat(model_id=model_id, region=region)
-    except Exception as e:
-        print(f"❌ Error creating LangGraph agent: {e}")
-        sys.exit(1)
-    
-    print("✅ Agent ready!")
-    print_greeting("langgraph")
-    print("Type /help for commands, or just ask a question.")
-    print("Type /quit to exit.\n")
-    
-    while True:
-        try:
-            user_input = input("You: ").strip()
-        except (KeyboardInterrupt, EOFError):
-            print("\n\nGoodbye! 👋")
-            break
-        
-        if not user_input:
-            continue
-        
-        if user_input.lower() in ["/quit", "/exit", "quit", "exit"]:
-            print("\nGoodbye! 👋")
-            break
-        
-        if user_input.lower() in ["/help", "help", "?"]:
-            print_help()
-            continue
-        
-        if user_input.lower() in ["/status", "status"]:
-            print_greeting("langgraph")
-            continue
-        
-        print("\nAssistant: ", end="", flush=True)
-        
-        try:
-            response = chat.chat(user_input)
-            print(response)
         except Exception as e:
             print(f"\n❌ Error: {e}")
         
@@ -254,23 +192,20 @@ def clear_agentcore_memory(memory_id: str, region: str, verbose: bool = False) -
 
 
 def clear_memory():
-    """Clear local memory files and optionally AgentCore Memory."""
-    from temperature_agent.tools.memory import clear_local_memory
+    """Clear AgentCore Memory and local alert history."""
+    from temperature_agent.tools.memory import clear_alert_history
     
     print("\n🗑️  Clearing memory...")
     
-    # Clear local files
-    print("\nLocal files:")
-    result = clear_local_memory()
-    
+    # Clear local alert history
+    print("\nAlert history:")
+    result = clear_alert_history()
     if result.get("success"):
         print(f"  ✅ Cleared: {', '.join(result.get('cleared', []))}")
     else:
-        print(f"  ⚠️  Partially cleared: {', '.join(result.get('cleared', []))}")
-        for error in result.get("errors", []):
-            print(f"     ❌ {error}")
+        print(f"  ❌ Error: {result.get('error')}")
     
-    # Check if AgentCore Memory is configured
+    # Clear AgentCore Memory
     config = get_config()
     memory_id = config.get("agentcore_memory_id")
     region = config.get("bedrock_region", "us-east-1")
@@ -283,13 +218,16 @@ def clear_memory():
                 count = ac_result.get('deleted_count', 0)
                 print(f"  ✅ Deleted {count} memory records")
                 if count > 0:
-                    print("     (Note: May take 30-60 seconds to fully propagate due to eventual consistency)")
+                    print("     (Note: May take 30-60 seconds to fully propagate)")
             else:
                 print(f"  ⚠️  Deleted {ac_result.get('deleted_count', 0)} records with errors:")
                 for error in ac_result.get("errors", []):
                     print(f"     ❌ {error}")
         except Exception as e:
             print(f"  ❌ Failed to clear AgentCore Memory: {e}")
+    else:
+        print("\nAgentCore Memory:")
+        print("  ⚠️  Not configured (agentcore_memory_id missing in config.json)")
     
     print()
 
@@ -302,13 +240,13 @@ def parse_args():
         epilog="""
 Examples:
   python -m temperature_agent              Start interactive chat
-  python -m temperature_agent --clear-memory  Clear local memory files
+  python -m temperature_agent --clear-memory  Clear memory and exit
         """
     )
     parser.add_argument(
         "--clear-memory",
         action="store_true",
-        help="Clear local memory files (house_knowledge.json, alert_history.json) and exit"
+        help="Clear AgentCore Memory and alert history, then exit"
     )
     return parser.parse_args()
 
@@ -322,22 +260,13 @@ def main():
         clear_memory()
         return
     
-    framework, model_id, region = get_framework_config()
-    
-    # Check if AgentCore Memory is configured
-    config = get_config()
-    use_memory = bool(config.get("agentcore_memory_id"))
+    model_id, region = get_model_config()
     
     print("\n🌡️  Starting Temperature Agent...")
-    print(f"(Framework: {framework}, Model: {model_id})")
-    if use_memory:
-        print("(Memory: AgentCore)")
+    print(f"(Model: {model_id})")
     print()
     
-    if framework == "langgraph":
-        run_langgraph_cli(model_id, region)
-    else:
-        run_strands_cli(model_id, region, use_memory=use_memory)
+    run_cli(model_id, region)
 
 
 if __name__ == "__main__":
