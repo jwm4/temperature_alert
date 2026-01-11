@@ -120,7 +120,18 @@ export function isAuthenticated(): boolean {
 }
 
 /**
- * Get the ID token for API calls
+ * Get the access token for API calls
+ * 
+ * Note: AgentCore Runtime expects the ACCESS token (which has `client_id` claim),
+ * not the ID token (which has `aud` claim). The authorizer validates `client_id`.
+ */
+export function getAccessToken(): string | null {
+  const tokens = getTokens();
+  return tokens?.accessToken ?? null;
+}
+
+/**
+ * Get the ID token (for user info, not API calls)
  */
 export function getIdToken(): string | null {
   const tokens = getTokens();

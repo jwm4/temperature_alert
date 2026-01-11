@@ -14,11 +14,12 @@
  */
 
 import { config } from './config';
-import { getIdToken, isAuthenticated as cognitoIsAuthenticated } from './cognito';
+import { getAccessToken, isAuthenticated as cognitoIsAuthenticated } from './cognito';
 
 // Generate a unique session ID for this browser session
+// Must be at least 33 characters per AgentCore requirements
 function generateSessionId(): string {
-  return crypto.randomUUID();
+  return crypto.randomUUID(); // 36 characters
 }
 
 // Session ID persists across page reloads within the same browser session
@@ -39,12 +40,12 @@ export interface ChatResponse {
 
 class AgentCoreClient {
   private getAuthHeaders(): Record<string, string> {
-    const idToken = getIdToken();
-    if (!idToken) {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
       throw new Error('Not authenticated');
     }
     return {
-      'Authorization': `Bearer ${idToken}`,
+      'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
       'X-Amzn-Bedrock-AgentCore-Runtime-Session-Id': getOrCreateSessionId(),
     };
