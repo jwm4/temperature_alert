@@ -43,6 +43,7 @@ Different types of markdown files belong in different locations:
 ```
 src/temperature_agent/
 ├── agent_with_memory.py   # Main agent implementation
+├── api.py                 # FastAPI REST server
 ├── cli.py                 # Interactive CLI
 ├── config.py              # Configuration loader
 ├── tools/                 # Agent tools
@@ -53,7 +54,9 @@ src/temperature_agent/
 └── legacy/                # Original scripts (reference only)
 ```
 
-**Key file: `agent_with_memory.py`** - This is the main agent implementation.
+**Key files:**
+- `agent_with_memory.py` - Main agent implementation
+- `api.py` - REST API for web/mobile access
 
 ---
 
@@ -90,7 +93,8 @@ Key settings:
 {
   "bedrock_model": "qwen.qwen3-32b-v1:0",  // DO NOT CHANGE without reading model report
   "bedrock_region": "us-east-1",
-  "agentcore_memory_id": "..."              // Required - see docs/agentcore_memory_setup.md
+  "agentcore_memory_id": "...",             // Required - see docs/agentcore_memory_setup.md
+  "api_password": "..."                     // Required for REST API
 }
 ```
 
@@ -243,6 +247,10 @@ PYTHONPATH=src pytest tests/ -v
 
 # Run CLI
 PYTHONPATH=src python -m temperature_agent
+
+# Run API server
+PYTHONPATH=src uvicorn temperature_agent.api:app --host 0.0.0.0 --port 8000
+# API docs at http://localhost:8000/docs
 
 # Clear local memory (useful after testing)
 PYTHONPATH=src python -m temperature_agent --clear-memory
