@@ -46,9 +46,11 @@ temperature_alert/
 ├── src/
 │   └── temperature_agent/
 │       ├── agent_with_memory.py # Main Strands agent with memory support
+│       ├── api.py              # FastAPI REST server
 │       ├── cli.py              # Interactive CLI
 │       ├── tools/              # Agent tools (temperature, alerts, memory)
 │       └── legacy/             # Original monitoring scripts
+├── web/                        # React frontend (PatternFly Chatbot)
 ├── tests/                      # Test suite
 ├── docs/                       # Documentation
 │   └── agentcore_memory_setup.md
@@ -155,6 +157,27 @@ curl -X POST http://localhost:8000/chat \
 ```
 
 Add `api_password` to your `config.json` to enable the API.
+
+### Web Interface
+
+A React-based chat interface is available in the `web/` directory:
+
+```bash
+# Install dependencies (first time only)
+cd web && npm install
+
+# Start development server
+npm run dev
+```
+
+Then open http://localhost:5173/ in your browser. Make sure the API server is also running.
+
+**Features:**
+- Password-protected login
+- Real-time chat with the temperature agent
+- Quick action buttons for common queries
+- Dark/light theme toggle
+- Mobile-friendly design
 
 **Example interactions:**
 - "Which room is coldest?"
