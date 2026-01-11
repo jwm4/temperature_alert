@@ -1,3 +1,8 @@
 config.json
 __pycache__/
 *.log
+venv/
+.venv/
+.local_docs/
+house_knowledge.json
+alert_history.json

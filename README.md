@@ -1,46 +1,222 @@
 # Temperature Alert System
 
-A Python service that monitors temperatures from Ecowitt sensors and sends alerts via [ntfy.sh](https://ntfy.sh) if thresholds are exceeded or based on weather forecasts.
+A Python service that monitors temperatures from Ecowitt sensors and sends alerts via [ntfy.sh](https://ntfy.sh). Includes an **AI-powered chat agent** for natural language interaction with your temperature data.
 
 ## Features
 
-- **Ecowitt Integration**: Automatically discovers and reads data from Ecowitt GW1XXX gateways.
-- **Freeze & Heat Warnings**: Alerts when indoor/outdoor temperatures cross defined thresholds.
-- **Weather Forecast**: Integrates with Open-Meteo to check for upcoming temperature extremes.
-- **Configurable**: Customize sensors, thresholds, and alert topics.
+- **AI Chat Agent**: Ask questions like "Which room is coldest?" or "Send me an alert about the basement"
+- **Semantic Memory**: Agent remembers facts about your house and retrieves them using semantic search (via AWS AgentCore)
+- **Ecowitt Integration**: Reads data from Ecowitt GW1XXX gateways (Cloud mode)
+- **Freeze & Heat Warnings**: Alerts when temperatures cross defined thresholds
+- **Weather Forecast**: Integrates with Open-Meteo to check for upcoming temperature extremes
+- **Configurable**: Customize sensors, thresholds, and alert topics
+
+## Quick Start
+
+```bash
+# Activate virtual environment
+source venv/bin/activate
+
+# Run the AI agent
+PYTHONPATH=src python -m temperature_agent
+```
+
+```
+🌡️  Starting Temperature Agent...
+(Framework: strands, Model: qwen.qwen3-32b-v1:0)
+
+✅ Agent ready!
+
+You: Which room is coldest?
+Assistant: The coldest room is the Attic at 55.9°F.
+
+You: The basement has old windows that let in cold air.
+Assistant: I've noted that the basement has old windows...
+
+You: Why might the basement get cold?
+Assistant: Based on what I know about your house, the old windows 
+           in the basement could be letting in cold air...
+```
+
+## Project Structure
+
+```
+temperature_alert/
+├── config.json                 # Your configuration
+├── src/
+│   └── temperature_agent/
+│       ├── agent.py            # Main Strands agent
+│       ├── agent_with_memory.py # Agent with AgentCore Memory
+│       ├── agent_langgraph.py  # Alternative LangGraph implementation
+│       ├── cli.py              # Interactive CLI
+│       ├── tools/              # Agent tools (temperature, alerts, memory)
+│       └── legacy/             # Original monitoring scripts
+├── tests/                      # Test suite
+├── docs/                       # Documentation
+│   └── agentcore_memory_setup.md
+└── venv/                       # Python virtual environment
+```
 
 ## Installation
 
-1. Clone the repository.
-2. Install dependencies (standard library only, no pip install needed unless extending).
-3. Copy `config.example.json` to `config.json`.
+### Prerequisites
+
+- Python 3.12+
+- AWS account with Bedrock access
+- Ecowitt weather station with cloud sync
+
+### Setup
+
+```bash
+# Clone and enter directory
+git clone <repo-url>
+cd temperature_alert
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install strands-agents bedrock-agentcore-starter-toolkit requests pytest
+
+# Configure AWS credentials
+aws configure
+```
+
+### Configuration
+
+Copy and edit the config file:
+
+```bash
+cp config.example.json config.json
+# Edit config.json with your Ecowitt credentials and sensor names
+```
 
 ## Configuration
 
-Edit `config.json` with your settings:
+Key fields in `config.json`:
 
 ```json
 {
-    "latitude": 42.79,
-    "longitude": -74.62,
-    "freeze_threshold_f": 60.0,
-    "heat_threshold_f": 70.0,
-    "ntfy_topic": "your-topic-here",
     "sensors": {
         "Indoor": "Kitchen",
-        "Channel 1": "Living Room"
-    }
+        "Channel 1": "Living Room",
+        "Channel 4": "Attic"
+    },
+    "freeze_threshold_f": 60.0,
+    "ntfy_topic": "your-alerts-topic",
+    
+    "ecowitt_application_key": "YOUR_KEY",
+    "ecowitt_api_key": "YOUR_KEY", 
+    "ecowitt_mac": "XX:XX:XX:XX:XX:XX",
+    
+    "bedrock_model": "qwen.qwen3-32b-v1:0",
+    "agentcore_memory_id": ""
 }
 ```
 
-- **sensors**: An ordered dictionary mapping sensor keys (e.g., "Channel 1") to display names (e.g., "Living Room"). The order here determines the order in alerts.
+See `config.example.json` for full template.
 
 ## Usage
 
-Run the service:
+### AI Chat Agent
 
 ```bash
-python temperature_alert.py
+source venv/bin/activate
+PYTHONPATH=src python -m temperature_agent
 ```
 
-It will run in a loop, polling sensors every 5 minutes and performing scheduled checks.
+**Example interactions:**
+- "Which room is coldest?"
+- "What's the forecast for tonight?"
+- "Send me an alert about the basement"
+- "Set the attic threshold to 50 degrees"
+- "The kitchen pipes run along the north wall" (stores fact)
+- "Why is the attic so cold?" (uses stored facts)
+
+### Enable AgentCore Memory (Optional)
+
+For semantic search and cross-session memory, set up AgentCore Memory:
+
+```bash
+# Create memory resource
+aws bedrock-agentcore-control create-memory \
+    --name "temperature_agent" \
+    --event-expiry-duration 30 \
+    --region us-east-1
+
+# Add the memory ID to config.json
+# "agentcore_memory_id": "temperature_agent-xxxxx"
+```
+
+See [docs/agentcore_memory_setup.md](docs/agentcore_memory_setup.md) for full setup guide.
+
+### Legacy Scripts
+
+The original monitoring scripts still work:
+
+```bash
+# Cloud Mode - fetches from Ecowitt cloud API
+python src/temperature_agent/legacy/temperature_alert_cloud.py
+```
+
+## Obtaining Ecowitt Cloud API Credentials
+
+To use cloud mode, you need API credentials from Ecowitt:
+
+### Step 1: Create an Ecowitt Account
+
+1. Go to [ecowitt.net](https://www.ecowitt.net) and create an account.
+2. Make sure your device is syncing data via the WS View or Ecowitt app.
+
+### Step 2: Get Your Application Key
+
+1. Log into [ecowitt.net](https://www.ecowitt.net).
+2. Click your username → **"Private Center"**.
+3. Under **"Application Key"**, click **"Create Application Key"**.
+4. Copy the key to your `config.json`.
+
+### Step 3: Get Your API Key
+
+1. In **"Private Center"**, find **"API Key"**.
+2. Click **"Create API Key"**.
+3. Copy to your `config.json`.
+
+### Step 4: Find Your Device MAC Address
+
+1. Go to **"My Devices"** in the Ecowitt web interface.
+2. Click on your weather station/gateway.
+3. Copy the MAC address (format: `XX:XX:XX:XX:XX:XX`) to your `config.json`.
+
+**API Rate Limits:**
+- 3 requests/second with Application Key
+- 1 request/second with API Key
+
+## Development
+
+### Running Tests
+
+```bash
+source venv/bin/activate
+PYTHONPATH=src python -m pytest tests/ -v
+```
+
+### Model Selection
+
+The agent uses Amazon Bedrock. Recommended models (in `config.json`):
+
+| Model | Notes |
+|-------|-------|
+| `qwen.qwen3-32b-v1:0` | **Recommended** - Clean output, good reasoning |
+| `mistral.mixtral-8x7b-instruct-v0:1` | Fast, cheap alternative |
+
+See [docs/bedrock_model_compatibility_report.md](docs/bedrock_model_compatibility_report.md) for full model testing results.
+
+### Documentation
+
+- [ADR/agent_development_plan.md](ADR/agent_development_plan.md) - Development roadmap and decisions
+- [docs/agentcore_memory_setup.md](docs/agentcore_memory_setup.md) - Memory setup guide
+
+## License
+
+See [LICENSE.txt](LICENSE.txt)
