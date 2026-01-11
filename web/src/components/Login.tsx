@@ -2,6 +2,8 @@ import { useState } from 'react';
 import {
   LoginPage,
   LoginForm,
+  Alert,
+  AlertVariant,
 } from '@patternfly/react-core';
 import { api } from '../api';
 
@@ -23,7 +25,12 @@ export function Login({ onLogin }: LoginProps) {
       await api.login(password);
       onLogin();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      console.error('Login error:', err);
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        setError('Cannot connect to server. Is the API running?');
+      } else {
+        setError(err instanceof Error ? err.message : 'Login failed');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -38,14 +45,23 @@ export function Login({ onLogin }: LoginProps) {
       signUpForAccountMessage={null}
       forgotCredentials={null}
     >
+      {error && (
+        <Alert
+          variant={AlertVariant.danger}
+          title={error}
+          isInline
+          style={{ marginBottom: '1rem' }}
+        />
+      )}
       <LoginForm
-        showHelperText={!!error}
-        helperText={error}
         usernameLabel="Username"
         usernameValue="user"
         passwordLabel="Password"
         passwordValue={password}
-        onChangePassword={(_e, val) => setPassword(val)}
+        onChangePassword={(_e, val) => {
+          setPassword(val);
+          setError(null); // Clear error when user types
+        }}
         isLoginButtonDisabled={isLoading || !password}
         onLoginButtonClick={handleLogin}
         loginButtonLabel={isLoading ? 'Signing in...' : 'Sign in'}
