@@ -94,7 +94,7 @@ Key settings:
   "bedrock_model": "qwen.qwen3-32b-v1:0",  // DO NOT CHANGE without reading model report
   "bedrock_region": "us-east-1",
   "agentcore_memory_id": "...",             // Required - see docs/agentcore_memory_setup.md
-  "api_password": "..."                     // Required for REST API
+  "api_users": {"user": "pass"}             // Required for REST API
 }
 ```
 

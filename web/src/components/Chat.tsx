@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Chatbot,
   ChatbotDisplayMode,
@@ -45,23 +45,37 @@ export function Chat({ onLogout }: ChatProps) {
     document.documentElement.classList.toggle('pf-v6-theme-dark', isDarkTheme);
   }, [isDarkTheme]);
 
-  // Fetch initial status on load
+  // Memoize onLogout to avoid unnecessary re-renders
+  const handleSessionExpired = useCallback(() => {
+    onLogout();
+  }, [onLogout]);
+
+  // Fetch initial status on load (only once)
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchStatus = async () => {
       try {
         const status = await api.getStatus();
-        setGreeting(status.greeting);
+        if (isMounted) {
+          setGreeting(status.greeting);
+        }
       } catch (err) {
         if (err instanceof Error && err.message === 'Session expired') {
-          onLogout();
-        } else {
+          handleSessionExpired();
+        } else if (isMounted) {
           console.error('Failed to fetch status:', err);
           setGreeting('🌡️ Temperature Assistant\n\nUnable to fetch current status.\n\nHow can I help you?');
         }
       }
     };
+    
     fetchStatus();
-  }, [onLogout]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [handleSessionExpired]);
 
   // Scroll to bottom when messages change
   useEffect(() => {

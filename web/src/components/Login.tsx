@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import {
   LoginPage,
-  LoginForm,
   Alert,
   AlertVariant,
+  Form,
+  FormGroup,
+  TextInput,
+  ActionGroup,
+  Button,
 } from '@patternfly/react-core';
 import { api } from '../api';
 
@@ -12,6 +16,7 @@ interface LoginProps {
 }
 
 export function Login({ onLogin }: LoginProps) {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +27,7 @@ export function Login({ onLogin }: LoginProps) {
     setError(null);
 
     try {
-      await api.login(password);
+      await api.login(username, password);
       onLogin();
     } catch (err) {
       console.error('Login error:', err);
@@ -53,19 +58,44 @@ export function Login({ onLogin }: LoginProps) {
           style={{ marginBottom: '1rem' }}
         />
       )}
-      <LoginForm
-        usernameLabel="Username"
-        usernameValue="user"
-        passwordLabel="Password"
-        passwordValue={password}
-        onChangePassword={(_e, val) => {
-          setPassword(val);
-          setError(null); // Clear error when user types
-        }}
-        isLoginButtonDisabled={isLoading || !password}
-        onLoginButtonClick={handleLogin}
-        loginButtonLabel={isLoading ? 'Signing in...' : 'Sign in'}
-      />
+      <Form onSubmit={handleLogin}>
+        <FormGroup label="Username" isRequired fieldId="username">
+          <TextInput
+            id="username"
+            type="text"
+            value={username}
+            onChange={(_e, val) => {
+              setUsername(val);
+              setError(null);
+            }}
+            isRequired
+            autoFocus
+          />
+        </FormGroup>
+        <FormGroup label="Password" isRequired fieldId="password">
+          <TextInput
+            id="password"
+            type="password"
+            value={password}
+            onChange={(_e, val) => {
+              setPassword(val);
+              setError(null);
+            }}
+            isRequired
+          />
+        </FormGroup>
+        <ActionGroup>
+          <Button
+            variant="primary"
+            type="submit"
+            isDisabled={isLoading || !username || !password}
+            isLoading={isLoading}
+            style={{ width: '100%' }}
+          >
+            {isLoading ? 'Signing in...' : 'Sign in'}
+          </Button>
+        </ActionGroup>
+      </Form>
     </LoginPage>
   );
 }

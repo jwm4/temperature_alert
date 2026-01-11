@@ -290,7 +290,7 @@ PYTHONPATH=src uvicorn temperature_agent.api:app --host 0.0.0.0 --port 8000
 # API docs at http://localhost:8000/docs
 ```
 
-**Configuration:** Add `api_password` to `config.json`
+**Configuration:** Add `api_users` to `config.json` with username/password pairs
 
 ---
 
@@ -497,8 +497,10 @@ The agent is configured via `config.json`. Key settings:
   // Memory (required)
   "agentcore_memory_id": "temperature_agent-mcbeCMEOwX",
   
-  // Web API
-  "api_password": "your_secure_password"
+  // Web API (username/password pairs)
+  "api_users": {
+    "admin": "your_secure_password"
+  }
 }
 ```
 

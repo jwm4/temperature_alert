@@ -146,7 +146,7 @@ PYTHONPATH=src uvicorn temperature_agent.api:app --host 0.0.0.0 --port 8000
 # Login
 curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"password": "your_api_password"}'
+  -d '{"username": "your_username", "password": "your_password"}'
 # Returns: {"session_token": "...", "expires_in": 86400}
 
 # Chat (use the session token)
@@ -156,7 +156,10 @@ curl -X POST http://localhost:8000/chat \
   -d '{"message": "Which room is coldest?"}'
 ```
 
-Add `api_password` to your `config.json` to enable the API.
+Add `api_users` to your `config.json` to enable the API:
+```json
+"api_users": {"username": "password"}
+```
 
 ### Web Interface
 

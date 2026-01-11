@@ -30,6 +30,9 @@
     "_memory_setup": "See docs/agentcore_memory_setup.md for setup instructions",
     "agentcore_memory_id": "",
 
-    "_comment_api": "Web API settings",
-    "api_password": "CHANGE_ME_TO_A_SECURE_PASSWORD"
+    "_comment_api": "Web API settings - use api_users for multiple users",
+    "api_users": {
+        "admin": "CHANGE_ME",
+        "guest": "CHANGE_ME"
+    }
 }

@@ -1,8 +1,14 @@
 /**
  * API client for Temperature Agent backend
+ * 
+ * Uses relative URLs so it works the same in development and production:
+ * - Development: Vite proxies /auth, /chat, /status to localhost:8000
+ * - Production: FastAPI serves both frontend and API on the same origin
+ * 
+ * Security notes:
+ * - Session tokens stored in localStorage (acceptable for personal/home use)
+ * - For higher security needs, consider httpOnly cookies
  */
-
-const API_BASE = 'http://localhost:8000';
 
 export interface LoginResponse {
   session_token: string;
@@ -37,13 +43,13 @@ class ApiClient {
     };
   }
 
-  async login(password: string): Promise<LoginResponse> {
-    const response = await fetch(`${API_BASE}/auth/login`, {
+  async login(username: string, password: string): Promise<LoginResponse> {
+    const response = await fetch('/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ username, password }),
     });
 
     if (!response.ok) {
@@ -60,7 +66,7 @@ class ApiClient {
   async logout(): Promise<void> {
     if (this.sessionToken) {
       try {
-        await fetch(`${API_BASE}/auth/logout`, {
+        await fetch('/auth/logout', {
           method: 'POST',
           headers: this.getAuthHeader(),
         });
@@ -73,7 +79,7 @@ class ApiClient {
   }
 
   async getStatus(): Promise<StatusResponse> {
-    const response = await fetch(`${API_BASE}/status`, {
+    const response = await fetch('/status', {
       headers: this.getAuthHeader(),
     });
 
@@ -91,7 +97,7 @@ class ApiClient {
   }
 
   async chat(message: string): Promise<ChatResponse> {
-    const response = await fetch(`${API_BASE}/chat`, {
+    const response = await fetch('/chat', {
       method: 'POST',
       headers: this.getAuthHeader(),
       body: JSON.stringify({ message }),
