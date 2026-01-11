@@ -212,12 +212,22 @@ PYTHONPATH=src python -m temperature_agent --clear-memory
 
 ---
 
+## Git Workflow
+
+When making PRs:
+- **Use separate commits** for each logical change (don't amend previous commits)
+- This allows squash-and-merge when the PR is ready
+- Write clear commit messages describing what changed and why
+
+---
+
 ## Don't Do These Things
 
 1. **Don't change the model** without reading the compatibility report
 2. **Don't add explicit tool instructions** to system prompts
 3. **Don't skip tests** - use TDD for new features
 4. **Don't put user docs in `.local_docs/`** - that folder is gitignored
+5. **Don't amend commits** in PRs - use separate commits for fixes
 
 ---
 
